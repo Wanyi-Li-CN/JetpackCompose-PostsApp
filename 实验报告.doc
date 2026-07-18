@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta name="Generator" content="SOLO"/>
+  <title>实验报告</title>
+  <style>
+    body { font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; font-size: 12pt; line-height: 1.6; }
+    h1 { font-size: 18pt; margin: 0 0 12pt 0; }
+    h2 { font-size: 14pt; margin: 14pt 0 8pt 0; }
+    p { margin: 6pt 0; }
+    ul { margin: 6pt 0 6pt 18pt; }
+    .meta { margin: 0 0 10pt 0; }
+  </style>
+</head>
+<body>
+  <h1>实验报告：基于 Jetpack Compose 的登录与帖子浏览 App（minSdk 24）</h1>
+
+  <p class="meta">项目路径：d:\AndroidStudioProjects\MyApplication2</p>
+
+  <h2>一、实验目的</h2>
+  <ul>
+    <li>掌握 Jetpack Compose 的基础界面开发与页面状态管理方法</li>
+    <li>掌握 Navigation Compose 的多页面导航与参数传递</li>
+    <li>掌握 Retrofit + OkHttp 的网络请求流程</li>
+    <li>掌握本地持久化方案：DataStore 保存会话、本地文件（JSON）缓存数据</li>
+    <li>完成一个可运行的“登录/注册 + 列表/详情 + 网络请求 + 本地存储”的应用</li>
+  </ul>
+
+  <h2>二、实验环境</h2>
+  <ul>
+    <li>操作系统：Windows</li>
+    <li>最低版本：minSdk = 24</li>
+    <li>UI：Jetpack Compose + Material3</li>
+    <li>导航：Navigation Compose</li>
+    <li>网络：Retrofit + OkHttp（测试接口 JSONPlaceholder）</li>
+    <li>本地存储：DataStore Preferences（会话）+ 文件 JSON（用户与帖子缓存）</li>
+  </ul>
+
+  <h2>三、实验需求分析</h2>
+  <p><b>1. 登录/注册</b></p>
+  <ul>
+    <li>支持用户注册账号并自动登录</li>
+    <li>支持使用已注册账号登录</li>
+    <li>登录状态需要持久化（重启 App 仍能识别是否登录）</li>
+  </ul>
+  <p><b>2. 列表与详情</b></p>
+  <ul>
+    <li>展示帖子列表，点击进入详情页</li>
+    <li>支持刷新功能</li>
+    <li>支持退出登录返回登录页</li>
+  </ul>
+  <p><b>3. 网络请求与本地存储</b></p>
+  <ul>
+    <li>列表数据通过网络接口获取</li>
+    <li>数据进行本地缓存，便于演示离线/弱网场景下仍可展示历史数据</li>
+  </ul>
+
+  <h2>四、总体设计</h2>
+  <p><b>1. 架构设计（简化 MVVM）</b></p>
+  <ul>
+    <li>UI（Compose Screen）：负责展示与交互</li>
+    <li>ViewModel：负责状态与调用 Repository</li>
+    <li>Repository：封装业务逻辑、网络与本地存储</li>
+    <li>本地存储划分：SessionStore（DataStore 会话）与 LocalStore（JSON 文件缓存）</li>
+  </ul>
+  <p><b>2. 页面与导航</b></p>
+  <ul>
+    <li>Splash：读取会话，跳转 Login 或 Posts</li>
+    <li>Login：登录页</li>
+    <li>Register：注册页</li>
+    <li>Posts：帖子列表页</li>
+    <li>PostDetail：帖子详情页（携带 postId 参数）</li>
+  </ul>
+
+  <h2>五、关键实现说明</h2>
+  <p><b>1. 依赖注入与全局容器</b></p>
+  <ul>
+    <li>Application 持有容器，Compose 使用 CompositionLocal 提供依赖</li>
+    <li>相关文件：MyApplication2Application.kt、AppContainer.kt、MainActivity.kt</li>
+  </ul>
+
+  <p><b>2. 会话存储（DataStore）</b></p>
+  <ul>
+    <li>保存/清除 userId，实现“是否登录”的持久化判断</li>
+    <li>相关文件：AppContainer.kt（SessionStore）</li>
+  </ul>
+
+  <p><b>3. 本地缓存（JSON 文件）</b></p>
+  <ul>
+    <li>users.json：保存注册用户列表</li>
+    <li>posts.json：缓存帖子列表数据</li>
+    <li>相关文件：LocalStore.kt</li>
+  </ul>
+
+  <p><b>4. 登录注册逻辑</b></p>
+  <ul>
+    <li>注册：检查用户名是否存在 → 生成自增 id → 保存用户 → 写入会话</li>
+    <li>登录：校验用户名与密码摘要 → 写入会话</li>
+    <li>密码处理：使用 SHA-256 摘要保存（满足期末作业的基本安全意识）</li>
+    <li>相关文件：AuthRepository.kt</li>
+  </ul>
+
+  <p><b>5. 网络请求与列表数据</b></p>
+  <ul>
+    <li>API：GET /posts，GET /posts/{id}</li>
+    <li>BaseUrl：https://jsonplaceholder.typicode.com/</li>
+    <li>刷新：请求网络 → 转为 Post → 更新内存状态并写入本地缓存文件</li>
+    <li>相关文件：ApiService.kt、ApiServiceFactory.kt、PostsRepository.kt</li>
+  </ul>
+
+  <p><b>6. 导航实现</b></p>
+  <ul>
+    <li>Splash 根据会话决定起始页面</li>
+    <li>PostDetail 通过路由参数 postId 实现详情页展示</li>
+    <li>相关文件：Routes.kt、AppNavGraph.kt</li>
+  </ul>
+
+  <p><b>7. UI 页面</b></p>
+  <ul>
+    <li>登录：LoginScreen.kt</li>
+    <li>注册：RegisterScreen.kt</li>
+    <li>列表：PostListScreen.kt</li>
+    <li>详情：PostDetailScreen.kt</li>
+  </ul>
+
+  <h2>六、实验过程（操作步骤）</h2>
+  <ul>
+    <li>在 Android Studio 打开工程 MyApplication2</li>
+    <li>同步 Gradle 依赖并等待索引完成</li>
+    <li>运行验证：点击 Run 运行到模拟器/真机</li>
+    <li>构建验证：执行 Gradle 任务 :app:assembleDebug</li>
+  </ul>
+  <p><b>App 内流程验证</b></p>
+  <ul>
+    <li>首次启动进入登录页</li>
+    <li>进入注册页注册账号，注册成功后进入帖子列表</li>
+    <li>点击帖子进入详情页</li>
+    <li>点击“刷新”重新请求并更新列表</li>
+    <li>点击“退出”清空会话并返回登录页</li>
+    <li>重启 App：若已登录应直接进入列表；退出后重启应回到登录页</li>
+  </ul>
+
+  <h2>七、实验结果</h2>
+  <ul>
+    <li>登录/注册功能完成，账号信息本地持久化</li>
+    <li>会话持久化完成（DataStore）</li>
+    <li>列表/详情页面完成，导航参数传递正常</li>
+    <li>网络请求完成（Retrofit + OkHttp）</li>
+    <li>本地缓存完成（JSON 文件），可用于离线演示</li>
+    <li>工程可构建并本地运行（:app:assembleDebug 构建成功）</li>
+  </ul>
+
+  <h2>八、问题与解决</h2>
+  <p><b>问题 1：Room + KSP 在当前工程工具链下兼容性问题导致编译困难</b></p>
+  <ul>
+    <li>现象：KSP 相关任务报错导致无法构建</li>
+    <li>处理：为保证期末作业级别“快速可运行”，改用 DataStore + 文件 JSON 缓存替代 Room</li>
+  </ul>
+  <p><b>问题 2：minSdk=24 下 adaptive icon 资源要求 API 26</b></p>
+  <ul>
+    <li>现象：资源链接失败，提示 adaptive-icon 需要至少 26</li>
+    <li>处理：将 adaptive icon 放入 mipmap-anydpi-v26 资源目录，确保低版本构建通过</li>
+  </ul>
+
+  <h2>九、总结与展望</h2>
+  <p>本实验完成了一个具备完整业务闭环的 Compose 应用：账号体系、导航、网络、持久化均已覆盖，满足期末作业展示需求。</p>
+  <p><b>可扩展方向</b></p>
+  <ul>
+    <li>若课程要求“必须数据库”，可将本地存储替换为 Room（需调整构建链路以支持代码生成）</li>
+    <li>补充加载态、空态、错误提示样式与输入校验</li>
+    <li>增加分页加载与更多业务模块</li>
+  </ul>
+</body>
+</html>
+
